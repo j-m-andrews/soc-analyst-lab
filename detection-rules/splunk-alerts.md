@@ -44,3 +44,18 @@ Account_Name=* Target_Server_Name=*
 | where Account_Name!="WINDOWS$"
 | table _time, Account_Name, Target_Server_Name, Process_Name
 ```
+
+## Alert 5 — Multi-Technique Attack Chain Detection
+
+**Technique:** Multiple  
+**Severity:** Critical  
+**Description:** Detects hosts triggering two or more suspicious techniques within the same time window — high confidence attack chain indicator.
+```spl
+index=* (EventCode=4698 OR EventCode=4648 OR EventCode=13) 
+| eval technique=case(EventCode=4698, "Scheduled Task Created", EventCode=4648, "Explicit Credential Logon", EventCode=13, "Registry Run Key Modified") 
+| stats dc(EventCode) as distinct_techniques values(technique) as techniques_observed count as total_events by host 
+| where distinct_techniques>=2
+| sort -distinct_techniques
+```
+
+**Why this matters:** A single suspicious event could be a false positive. Multiple suspicious techniques on the same host within a short timeframe is a high confidence indicator of an active attack chain. This search correlates across persistence, lateral movement, and privilege abuse techniques simultaneously.
