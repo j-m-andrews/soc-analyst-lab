@@ -1,0 +1,154 @@
+# IR-2026-005 — Web Application Attack & Data Exfiltration Attempt
+
+**Report ID:** IR-2026-005  
+**Date:** March 11, 2026  
+**Analyst:** [Your Name]  
+**Severity:** Critical  
+**Status:** Closed  
+
+---
+
+## 1. Executive Summary
+
+Analysis of the BOTS v2 dataset identified a targeted attack against Frothly Inc. beginning August 16, 2017. An attacker operating from a Vultr VPS in Germany conducted SQL injection and Shellshock attacks against Frothly's MyBB forum. The attacker subsequently delivered a malicious PDF exploiting a critical Adobe Reader vulnerability to user `frothly\billy.tun`. A Mac backdoor (Quimitchin) and Tor C2 communication were observed on internal hosts. The attacker ultimately attempted to exfiltrate a file named `topsecretyeast.pdf` — likely proprietary brewery recipe data — via FTP to a GoDaddy hosted server. The exfiltration attempt was blocked by the Palo Alto firewall.
+
+---
+
+## 2. Timeline
+
+| Time | Event |
+|------|-------|
+| 2017-08-16 09:31 | SQL injection attack begins against MyBB forum from 45.77.65.211 |
+| 2017-08-16 09:31 | Shellshock attempt detected in User-Agent header |
+| 2017-08-25 23:24 | Malicious PDF `American Microbrewery Ale #1.pdf` delivered via FTP — Adobe Reader exploit |
+| 2017-08-25 23:46 | Exfiltration attempt — `topsecretyeast.pdf` sent via FTP to 160.153.91.7 |
+| 2017-08-25 23:46 | Palo Alto firewall blocks exfiltration attempt |
+| Unknown | Quimitchin Mac backdoor DNS lookup detected by Suricata |
+| Unknown | Tor relay C2 communication detected on internal host 10.0.2.101 |
+
+---
+
+## 3. Attack Chain
+
+### Initial Access — T1190 (Exploit Public Facing Application)
+Attacker at `45.77.65.211` (Vultr VPS, Frankfurt Germany) used the w3af web application attack framework to conduct time-based blind SQL injection against Frothly's MyBB forum search function on host `cassiopeia`. The attacker injected `SLEEP(12)` payloads to confirm SQL injection vulnerability. A Shellshock exploit was simultaneously attempted via the User-Agent header:
+```
+() { test; }; sleep 12
+```
+
+### Execution — T1203 (Exploitation for Client Execution)
+A malicious PDF file named `American Microbrewery Ale #1.pdf` was delivered via FTP. The Palo Alto firewall identified the file as exploiting the **Adobe Reader WKT String Buffer Overflow Vulnerability (CVE-34904)** — rated critical severity. The target was user `frothly\billy.tun`.
+
+### Command and Control — T1090.003 (Multi-hop Proxy: Tor)
+Suricata detected sustained Tor relay traffic from internal host `10.0.2.101` to multiple known Tor nodes:
+- 37.187.30.78
+- 138.68.174.81
+- 179.43.168.166
+- 194.109.206.212
+- 213.32.68.101
+
+### Persistence — T1543 (Mac Backdoor: Quimitchin)
+Suricata fired on `ET TROJAN OSX Backdoor Quimitchin DNS Lookup` — a Mac-specific backdoor discovered in 2017. Internal traffic from `10.0.4.2` to `10.0.1.100` was observed suggesting the backdoor was already operating inside the network.
+
+### Exfiltration — T1048 (Exfiltration Over Alternative Protocol)
+User `frothly\billy.tun` attempted to transmit a file named `topsecretyeast.pdf` via FTP from internal IP `71.39.18.125` to external server `160.153.91.7` (GoDaddy hosted, Phoenix Arizona). The filename strongly suggests proprietary brewery recipe data. The Palo Alto firewall denied the transfer.
+
+---
+
+## 4. Indicators of Compromise (IOCs)
+
+| Type | Value | Description |
+|------|-------|-------------|
+| IP | 45.77.65.211 | Attacker VPS — Vultr, Frankfurt Germany |
+| IP | 160.153.91.7 | Exfiltration destination — GoDaddy, Phoenix AZ |
+| IP | 10.0.2.101 | Internal host with Tor C2 communication |
+| IP | 10.0.1.100 | Internal host with Quimitchin backdoor activity |
+| User | frothly\billy.tun | Compromised user account |
+| File | topsecretyeast.pdf | Targeted proprietary data |
+| File | American Microbrewery Ale #1.pdf | Malicious PDF exploit delivery |
+| Tool | w3af | Web application attack framework |
+| Technique | SLEEP(12) | Time-based blind SQL injection payload |
+| UserAgent | Mozilla/4.0 w3af.org | Attacker user agent string |
+| Malware | Quimitchin | Mac OSX backdoor |
+
+---
+
+## 5. Affected Systems
+
+| Hostname | IP | User | Role |
+|----------|----|------|------|
+| cassiopeia | Unknown | N/A | MyBB forum / database server |
+| Unknown | 10.0.2.101 | Unknown | Internal host with Tor C2 |
+| Unknown | 10.0.1.100 | Unknown | Internal host with Quimitchin backdoor |
+| Unknown | 71.39.18.125 | frothly\billy.tun | Compromised workstation |
+
+---
+
+## 6. Detection Source
+
+- **Primary:** MySQL transaction logs — SLEEP injection payloads in SQL_TEXT field
+- **Secondary:** Palo Alto firewall pan:threat alerts — malicious PDF and exfiltration attempt
+- **Tertiary:** Suricata IDS — Quimitchin backdoor DNS lookup, Tor relay communication
+- **SIEM:** Splunk Enterprise — index=botsv2
+
+### Key SPL Queries
+```spl
+index=botsv2 sourcetype="mysql:transaction:details" ("SLEEP" OR "BENCHMARK")
+| stats count by SQL_TEXT | sort -count
+
+index=botsv2 host="growler" sourcetype="pan:threat" | head 10
+
+index=botsv2 sourcetype="suricata" ("Quimitchin" OR "TOR")
+| stats count by src_ip, dest_ip, alert.signature | sort -count
+```
+
+---
+
+## 7. Containment & Remediation
+
+In a real incident the following steps would be taken:
+- Immediately isolate `billy.tun`'s workstation from the network
+- Block `45.77.65.211` and `160.153.91.7` at the perimeter firewall
+- Block all Tor exit node IPs at the perimeter firewall
+- Reset credentials for `frothly\billy.tun` and audit all accounts for lateral movement
+- Patch MyBB forum against SQL injection vulnerabilities
+- Update Adobe Reader to current version across all endpoints
+- Scan all Mac endpoints for Quimitchin backdoor indicators
+- Audit all FTP traffic logs for additional exfiltration attempts
+- Conduct forensic investigation of `10.0.1.100` and `10.0.2.101`
+- Notify legal and management — proprietary recipe data was targeted
+
+---
+
+## 8. Root Cause
+
+An attacker exploited a SQL injection vulnerability in Frothly's publicly facing MyBB forum to gain initial access. The attacker then delivered a malicious PDF exploiting an unpatched Adobe Reader vulnerability to a corporate user. A Mac backdoor was deployed for persistence and Tor was used for C2 communication to evade detection. The attacker's ultimate objective appears to have been theft of proprietary brewery recipe data, suggesting corporate espionage motivation. The Palo Alto firewall successfully blocked the final exfiltration attempt.
+
+---
+
+## 9. Recommendations
+
+- Implement a Web Application Firewall (WAF) to detect and block SQL injection attempts
+- Patch management program — Adobe Reader and all client applications must be kept current
+- Disable FTP — use SFTP or HTTPS for file transfers
+- Block Tor traffic at the perimeter firewall
+- Deploy Mac EDR solution — endpoint telemetry for macOS
+- Implement Data Loss Prevention (DLP) controls on sensitive files
+- Conduct security awareness training for users on malicious PDF risks
+- Review and harden MyBB forum — input validation and prepared statements
+- Segment network to limit lateral movement if initial access is achieved
+
+---
+
+## 10. MITRE ATT&CK Mapping
+
+| Technique ID | Technique Name | Tactic |
+|--------------|----------------|--------|
+| T1190 | Exploit Public Facing Application | Initial Access |
+| T1203 | Exploitation for Client Execution | Execution |
+| T1090.003 | Multi-hop Proxy (Tor) | Command and Control |
+| T1543 | Create or Modify System Process | Persistence |
+| T1048 | Exfiltration Over Alternative Protocol | Exfiltration |
+| T1036 | Masquerading | Defense Evasion |
+| T1595 | Active Scanning | Reconnaissance |
+| T1592 | Gather Victim Host Information | Reconnaissance |
