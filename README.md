@@ -43,6 +43,7 @@ A hands-on security operations lab built from scratch to simulate real-world SOC
 | [IR-2026-002](incidents/IR-2026-002.md) | Scheduled task persistence and brute force | High |
 | [IR-2026-003](incidents/IR-2026-003.md) | Registry persistence and lateral movement | High |
 | [IR-2026-004](incidents/IR-2026-004.md) | Cerber ransomware infection — BOTS v1 dataset | Critical |
+| [IR-2026-005](incidents/IR-2026-005.md) | Web application attack and data exfiltration — BOTS v2 | Critical |
 
 ## Threat Hunting
 
@@ -64,3 +65,9 @@ Independent investigation of the Splunk BOTS v1 dataset identifying a Cerber ran
 - T1090.003 — Multi-hop Proxy (Tor)
 - T1071 — Application Layer Protocol
 - T1046 — Network Service Scanning
+- T1190 — Exploit Public Facing Application
+- T1203 — Exploitation for Client Execution
+- T1543 — Create or Modify System Process
+- T1048 — Exfiltration Over Alternative Protocol
+- T1595 — Active Scanning
+- T1592 — Gather Victim Host Information
