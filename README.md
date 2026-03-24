@@ -18,13 +18,20 @@ A hands-on security operations lab built from scratch to simulate real-world SOC
 
 ## Skills Demonstrated
 
-- Splunk deployment and pipeline configuration
-- SPL query writing and detection rule development
+- Splunk deployment, configuration, and pipeline administration
+- SPL query writing, field extraction, and correlation search development
 - Windows Event Log and Sysmon analysis
 - Phishing simulation and credential harvesting detection
 - Persistence and lateral movement simulation and detection
+- MySQL transaction log analysis for SQL injection detection
+- Palo Alto firewall log parsing and threat analysis
+- Suricata IDS alert analysis and correlation
+- osquery endpoint telemetry analysis on macOS
+- Hex to decimal IP conversion and IOC enrichment
+- Threat intelligence enrichment using VirusTotal and AbuseIPDB
 - Independent threat hunting using real-world attack datasets
 - Structured incident reporting with MITRE ATT&CK mapping
+- Cross-source log correlation across SIEM, IDS, firewall, and endpoint data
 
 ## Detection Rules
 
