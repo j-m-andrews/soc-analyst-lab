@@ -1,5 +1,3 @@
-# soc-analyst-lab
-
 # SOC Analyst Home Lab
 
 A hands-on security operations lab built from scratch to simulate real-world SOC analyst workflows including phishing detection, log triage, threat hunting, and incident response.
